@@ -204,3 +204,17 @@ class UASAuthTests(TestCase):
             self.client.post(reverse('logout'))
         self.assertTrue(any("AUDIT_EVENT: [LOGOUT]" in log for log in cm.output))
         self.assertTrue(any("testuser_a" in log for log in cm.output))
+
+    # ----------------------------------------
+    # STORED XSS PREVENTION TESTS
+    # ----------------------------------------
+    def test_stored_xss_mitigated_on_bio(self):
+        """Test malicious Javascript arrays submitted natively into bios extract safely escaped organically."""
+        self.user_a.userprofile.bio = "<script>alert('xss_test_payload')</script>"
+        self.user_a.userprofile.save()
+        self.client.login(username='testuser_a', password='testpassword')
+        response = self.client.get(reverse('profile'))
+        
+        # Verify specific dangerous string outputs are escaped correctly natively bounding operations
+        self.assertNotContains(response, "<script>alert('xss_test_payload')</script>")
+        self.assertContains(response, "&lt;script&gt;alert(&#x27;xss_test_payload&#x27;)&lt;/script&gt;")
