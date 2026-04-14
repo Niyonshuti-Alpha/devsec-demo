@@ -1,5 +1,5 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from django.http import HttpResponseForbidden
+from django.http import HttpResponseForbidden, JsonResponse
 from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required, permission_required
 from django.contrib.auth.views import LoginView
@@ -75,3 +75,9 @@ def protected_view(request):
 @permission_required('alpha.can_view_dashboard', raise_exception=True)
 def instructor_dashboard(request):
     return render(request, 'alpha/dashboard.html')
+
+@login_required
+def ping_status(request):
+    if request.method == 'POST':
+        return JsonResponse({'status': 'success', 'message': 'Status safely pinged with native CSRF protection!'})
+    return JsonResponse({'status': 'error', 'message': 'Invalid request method'}, status=405)

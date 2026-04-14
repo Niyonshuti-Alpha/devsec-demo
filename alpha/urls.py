@@ -18,4 +18,5 @@ urlpatterns = [
     path('profile/<int:user_id>/update/', views.update_profile, name='update_profile'),
     path('protected/', views.protected_view, name='protected_view'),
     path('instructor-dashboard/', views.instructor_dashboard, name='instructor_dashboard'),
+    path('ping/', views.ping_status, name='ping_status'),
 ]

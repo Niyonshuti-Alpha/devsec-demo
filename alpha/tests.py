@@ -1,10 +1,13 @@
-from django.test import TestCase
+from django.test import TestCase, Client
 from django.urls import reverse
 from django.contrib.auth.models import User, Permission
 from .models import UserProfile
 
 class UASAuthTests(TestCase):
     def setUp(self):
+        from django.core.cache import cache
+        cache.clear()
+        
         self.user_a = User.objects.create_user(username='testuser_a', password='testpassword', email='usera@example.com')
         self.user_b = User.objects.create_user(username='testuser_b', password='testpassword', email='userb@example.com')
         self.instructor = User.objects.create_user(username='instructor', password='testpassword')
@@ -121,3 +124,31 @@ class UASAuthTests(TestCase):
         # Follow up failure does not trigger 429
         response = self.client.post(self.login_url, {'username': 'testuser_a', 'password': 'wrongpassword'})
         self.assertEqual(response.status_code, 200)
+
+    # ----------------------------------------
+    # CSRF (AJAX LOGIC) PREVENTION TESTS
+    # ----------------------------------------
+    def test_ajax_csrf_block_missing_token(self):
+        """Test malicious connection attempts explicitly missing the tokens catch 403 natively"""
+        csrf_client = Client(enforce_csrf_checks=True)
+        csrf_client.login(username='testuser_a', password='testpassword')
+        
+        response = csrf_client.post(reverse('ping_status'))
+        self.assertEqual(response.status_code, 403)
+
+    def test_ajax_csrf_passes_with_token(self):
+        """Test legitimate mapped UI workflow logic inherently passes via native Django processing"""
+        from django.middleware.csrf import get_token
+        csrf_client = Client(enforce_csrf_checks=True)
+        csrf_client.login(username='testuser_a', password='testpassword')
+        
+        # Grab simulated organic token natively
+        request = csrf_client.get(reverse('profile')).wsgi_request
+        token = get_token(request)
+        
+        response = csrf_client.post(
+            reverse('ping_status'),
+            HTTP_X_CSRFTOKEN=token
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['status'], 'success')
