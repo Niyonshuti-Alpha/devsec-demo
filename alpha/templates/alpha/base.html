@@ -8,6 +8,9 @@
     <nav>
         <a href="{% url 'profile' %}">Profile</a>
         <a href="{% url 'protected_view' %}">Protected Area</a>
+        {% if perms.alpha.can_view_dashboard %}
+            <a href="{% url 'instructor_dashboard' %}">Instructor Dashboard</a>
+        {% endif %}
         {% if user.is_authenticated %}
             <form action="{% url 'logout' %}" method="post" style="display:inline;">
                 {% csrf_token %}
