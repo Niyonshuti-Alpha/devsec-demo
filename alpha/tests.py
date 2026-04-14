@@ -92,3 +92,32 @@ class UASAuthTests(TestCase):
         reset_url = reverse('password_reset')
         response = self.client.post(reset_url, {'email': 'doesnotexist@example.com'})
         self.assertRedirects(response, reverse('password_reset_done'))
+
+    # ----------------------------------------
+    # LOGIN BRUTE-FORCE PROTECTION TESTS
+    # ----------------------------------------
+    def test_brute_force_lockout(self):
+        """Test that exactly 5 failed logins triggers a 429 restriction"""
+        for i in range(5):
+            response = self.client.post(self.login_url, {'username': 'testuser_a', 'password': 'wrongpassword'})
+            self.assertEqual(response.status_code, 200) 
+            
+        # 6th attempt should hit the 429 natively
+        response = self.client.post(self.login_url, {'username': 'testuser_a', 'password': 'wrongpassword'})
+        self.assertEqual(response.status_code, 429)
+
+    def test_brute_force_lockout_clears_on_success(self):
+        """Test that successfully logging in resets the cache counter preventing lockout"""
+        for i in range(4):
+            self.client.post(self.login_url, {'username': 'testuser_a', 'password': 'wrongpassword'})
+            
+        # 5th attempt success
+        response = self.client.post(self.login_url, {'username': 'testuser_a', 'password': 'testpassword'})
+        self.assertRedirects(response, reverse('profile'))
+        
+        # Logout
+        self.client.post(self.logout_url)
+        
+        # Follow up failure does not trigger 429
+        response = self.client.post(self.login_url, {'username': 'testuser_a', 'password': 'wrongpassword'})
+        self.assertEqual(response.status_code, 200)
