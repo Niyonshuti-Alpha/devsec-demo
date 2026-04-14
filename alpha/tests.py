@@ -3,6 +3,7 @@ from django.urls import reverse
 from django.contrib.auth.models import User, Permission
 from .models import UserProfile
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.conf import settings
 
 class UASAuthTests(TestCase):
     def setUp(self):
@@ -267,3 +268,13 @@ class UASAuthTests(TestCase):
         self.client.login(username='testuser_b', password='testpassword')
         response_b = self.client.get(reverse('download_document', args=[self.user_a.userprofile.id, 'document']))
         self.assertEqual(response_b.status_code, 403)
+
+    # ----------------------------------------
+    # INFRASTRUCTURE HARDEST ASSERTS
+    # ----------------------------------------
+    def test_production_security_settings(self):
+        """Test cryptographic parameters physically render effectively mapping constraints natively!"""
+        self.assertEqual(settings.X_FRAME_OPTIONS, 'DENY')
+        self.assertTrue(settings.SECURE_CONTENT_TYPE_NOSNIFF)
+        self.assertTrue(settings.SECURE_HSTS_PRELOAD)
+        self.assertTrue(settings.SECURE_HSTS_INCLUDE_SUBDOMAINS)
