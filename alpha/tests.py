@@ -152,3 +152,26 @@ class UASAuthTests(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()['status'], 'success')
+
+    # ----------------------------------------
+    # OPEN REDIRECT PREVENTION TESTS
+    # ----------------------------------------
+    def test_login_open_redirect_blocked(self):
+        """Test malicious external URLs passed to login are securely dropped!"""
+        response = self.client.post(self.login_url, {
+            'username': 'testuser_a',
+            'password': 'testpassword',
+            'next': 'http://evil.com/phishing/'
+        })
+        # If open redirect was allowed, it would redirect to http://evil.com
+        # Since it natively overrides with url_has_allowed_host_and_scheme, it defaults recursively
+        self.assertRedirects(response, reverse('profile'))
+
+    def test_login_internal_redirect_allowed(self):
+        """Test legitimate internal URI trajectories resolve organically seamlessly"""
+        response = self.client.post(self.login_url, {
+            'username': 'testuser_a',
+            'password': 'testpassword',
+            'next': '/alpha/protected/'
+        })
+        self.assertRedirects(response, '/alpha/protected/')
