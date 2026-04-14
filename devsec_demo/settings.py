@@ -48,6 +48,8 @@ LOGIN_REDIRECT_URL = '/alpha/profile/'
 LOGOUT_REDIRECT_URL = '/alpha/login/'
 LOGIN_URL = '/alpha/login/'
 
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
