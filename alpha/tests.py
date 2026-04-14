@@ -175,3 +175,32 @@ class UASAuthTests(TestCase):
             'next': '/alpha/protected/'
         })
         self.assertRedirects(response, '/alpha/protected/')
+
+    # ----------------------------------------
+    # AUDIT OBSERVABILITY TESTS
+    # ----------------------------------------
+    def test_audit_logs_login_success(self):
+        with self.assertLogs('security.audit', level='INFO') as cm:
+            self.client.post(self.login_url, {
+                'username': 'testuser_a',
+                'password': 'testpassword'
+            })
+        self.assertTrue(any("AUDIT_EVENT: [LOGIN_SUCCESS]" in log for log in cm.output))
+        self.assertTrue(any("testuser_a" in log for log in cm.output))
+
+    def test_audit_logs_login_failed(self):
+        with self.assertLogs('security.audit', level='WARNING') as cm:
+            self.client.post(self.login_url, {
+                'username': 'testuser_a',
+                'password': 'wrongpassword'
+            })
+        self.assertTrue(any("AUDIT_EVENT: [LOGIN_FAILED]" in log for log in cm.output))
+        self.assertTrue(any("testuser_a" in log for log in cm.output))
+        self.assertFalse(any("wrongpassword" in log for log in cm.output))  # Verifies credentials dropped
+
+    def test_audit_logs_logout(self):
+        self.client.login(username='testuser_a', password='testpassword')
+        with self.assertLogs('security.audit', level='INFO') as cm:
+            self.client.post(reverse('logout'))
+        self.assertTrue(any("AUDIT_EVENT: [LOGOUT]" in log for log in cm.output))
+        self.assertTrue(any("testuser_a" in log for log in cm.output))

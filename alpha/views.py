@@ -1,5 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import HttpResponseForbidden, JsonResponse
+import logging
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required, permission_required
@@ -10,12 +11,14 @@ from .models import UserProfile
 
 def register(request):
     next_url = request.POST.get('next') or request.GET.get('next')
+    audit_logger = logging.getLogger('security.audit')
 
     if request.method == 'POST':
         form = CustomUserCreationForm(request.POST)
         if form.is_valid():
             user = form.save()
             UserProfile.objects.create(user=user)
+            audit_logger.info(f"AUDIT_EVENT: [REGISTRATION_SUCCESS] New User '{user.username}' created physically in the application.")
             
             # Secure Redirect Bounds
             if next_url and url_has_allowed_host_and_scheme(url=next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
