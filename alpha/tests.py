@@ -2,6 +2,7 @@ from django.test import TestCase, Client
 from django.urls import reverse
 from django.contrib.auth.models import User, Permission
 from .models import UserProfile
+from django.core.files.uploadedfile import SimpleUploadedFile
 
 class UASAuthTests(TestCase):
     def setUp(self):
@@ -218,3 +219,51 @@ class UASAuthTests(TestCase):
         # Verify specific dangerous string outputs are escaped correctly natively bounding operations
         self.assertNotContains(response, "<script>alert('xss_test_payload')</script>")
         self.assertContains(response, "&lt;script&gt;alert(&#x27;xss_test_payload&#x27;)&lt;/script&gt;")
+
+    # ----------------------------------------
+    # SECURE UPLOAD TESTS
+    # ----------------------------------------
+    def test_upload_valid_png_file(self):
+        """Test magic byte validations flawlessly resolve correctly formulated PNG arrays."""
+        self.client.login(username='testuser_a', password='testpassword')
+        valid_png_content = b'\x89PNG\r\n\x1a\n\x00\x00\x00\x01\x02\x03\x04\x05'
+        file_obj = SimpleUploadedFile("avatar.png", valid_png_content, content_type="image/png")
+        
+        response = self.client.post(reverse('update_profile', args=[self.user_a.id]), {
+            'bio': 'testing avatar',
+            'avatar': file_obj
+        })
+        self.assertRedirects(response, reverse('profile'))
+        self.user_a.userprofile.refresh_from_db()
+        self.assertTrue(self.user_a.userprofile.avatar)
+
+    def test_upload_invalid_script_spoofed(self):
+        """Test python scripts generically masked with valid extensions explicitly crash mapping securely limits."""
+        self.client.login(username='testuser_a', password='testpassword')
+        hostile_content = b'import os; os.system("rm -rf /")'
+        file_obj = SimpleUploadedFile("avatar.png", hostile_content, content_type="image/png")
+        
+        response = self.client.post(reverse('update_profile', args=[self.user_a.id]), {
+            'bio': 'testing bad avatar',
+            'avatar': file_obj
+        })
+        # Fails validation explicitly tracking boundary outputs
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'File type is not supported')
+        
+    def test_download_authorization_matrix(self):
+        """Test only specific bound owners and instructors mathematically map download objects!"""
+        # Upload dynamically
+        self.client.login(username='testuser_a', password='testpassword')
+        valid_pdf_content = b'%PDF-1.4\n1 0 obj'
+        file_obj = SimpleUploadedFile("doc.pdf", valid_pdf_content, content_type="application/pdf")
+        self.client.post(reverse('update_profile', args=[self.user_a.id]), {'document': file_obj})
+        
+        # Test download authorized implicitly
+        response = self.client.get(reverse('download_document', args=[self.user_a.userprofile.id, 'document']))
+        self.assertEqual(response.status_code, 200)
+        
+        # Test IDOR bounds preventing 'testuser_b' from touching 'testuser_a' docs!
+        self.client.login(username='testuser_b', password='testpassword')
+        response_b = self.client.get(reverse('download_document', args=[self.user_a.userprofile.id, 'document']))
+        self.assertEqual(response_b.status_code, 403)

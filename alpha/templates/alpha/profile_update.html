@@ -1,7 +1,7 @@
 {% extends 'alpha/base.html' %}
 {% block content %}
 <h2>Update Profile ({{ target_user.username }})</h2>
-<form method="post">
+<form method="post" enctype="multipart/form-data">
     {% csrf_token %}
     {{ form.as_p }}
     <button type="submit">Update Summary</button>

@@ -1,5 +1,5 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from django.http import HttpResponseForbidden, JsonResponse
+from django.http import HttpResponseForbidden, JsonResponse, FileResponse, Http404
 import logging
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.contrib.auth.models import User
@@ -69,7 +69,7 @@ def update_profile(request, user_id):
         return HttpResponseForbidden("You do not have permission to edit this profile.")
 
     if request.method == 'POST':
-        form = ProfileUpdateForm(request.POST, instance=target_profile)
+        form = ProfileUpdateForm(request.POST, request.FILES, instance=target_profile)
         if form.is_valid():
             form.save()
             return redirect('profile')
@@ -92,3 +92,18 @@ def ping_status(request):
     if request.method == 'POST':
         return JsonResponse({'status': 'success', 'message': 'Status safely pinged with native CSRF protection!'})
     return JsonResponse({'status': 'error', 'message': 'Invalid request method'}, status=405)
+
+@login_required
+def download_document(request, profile_id, file_type):
+    from .models import UserProfile
+    profile = get_object_or_404(UserProfile, id=profile_id)
+    
+    # Strictly validate horizontal matrix restrictions bounding authorization logic
+    if request.user != profile.user and not request.user.has_perm('alpha.can_view_dashboard'):
+        return HttpResponseForbidden("Access Denied.")
+        
+    file_obj = profile.avatar if file_type == 'avatar' else profile.document
+    if not file_obj:
+        raise Http404("Document missing.")
+        
+    return FileResponse(file_obj)

@@ -19,4 +19,5 @@ urlpatterns = [
     path('protected/', views.protected_view, name='protected_view'),
     path('instructor-dashboard/', views.instructor_dashboard, name='instructor_dashboard'),
     path('ping/', views.ping_status, name='ping_status'),
+    path('profile/<int:profile_id>/download/<str:file_type>/', views.download_document, name='download_document'),
 ]

@@ -4,6 +4,12 @@
 <p>Hello, {{ user.username }}!</p>
 <p>Email: {{ user.email }}</p>
 <div>Bio: {{ user.userprofile.bio|linebreaks }}</div>
+{% if user.userprofile.avatar %}
+    <p><a href="{% url 'download_document' user.userprofile.id 'avatar' %}">Download Avatar securely</a></p>
+{% endif %}
+{% if user.userprofile.document %}
+    <p><a href="{% url 'download_document' user.userprofile.id 'document' %}">Download Document securely</a></p>
+{% endif %}
 <hr>
 <h3>Live Connection Pinger</h3>
 <p>Click below to execute a secure AJAX POST testing connection latency.</p>
